@@ -163,6 +163,35 @@ public static class NAudio
         return Play(clips[Random.Range(0, clips.Length)], position, volume, pitch, spread, minDistance, mixerGroup);
     }
 
+    static AudioSource _source2D;
+    static AudioSource source2D
+    {
+        get
+        {
+            if (!_source2D)
+                _source2D = CreateSource(spatialBlend: 0, loop: false);
+
+            return _source2D;
+        }
+    }
+
+    public static AudioSource Play2D(
+        this AudioClip clip,
+        float volume = 1)
+    {
+        source2D.PlayOneShot(clip, volume);
+
+        return source2D;
+    }
+
+    public static AudioSource Play2D(
+        this AudioClip[] clips, float volume = 1)
+    {
+        source2D.PlayOneShot(clips[Random.Range(0, clips.Length)], volume);
+
+        return source2D;
+    }
+
     // AUDIO SOURCE CREATION
 
     /// <summary>
