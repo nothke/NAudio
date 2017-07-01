@@ -163,6 +163,8 @@ public static class NAudio
         return Play(clips[Random.Range(0, clips.Length)], position, volume, pitch, spread, minDistance, mixerGroup);
     }
 
+    #region 2D
+
     static AudioSource _source2D;
     static AudioSource source2D
     {
@@ -191,6 +193,18 @@ public static class NAudio
 
         return source2D;
     }
+
+    public static AudioSource Play2D(
+        this AudioClip[] clips,
+        float volume = 1, float pitch = 1,
+        float spread = SPREAD,
+        float minDistance = MIN_DISTANCE,
+        AudioMixerGroup mixerGroup = null)
+    {
+        return Play(clips[Random.Range(0, clips.Length)], Vector3.zero, volume, pitch, spread, minDistance, mixerGroup);
+    }
+
+    #endregion
 
     // AUDIO SOURCE CREATION
 
