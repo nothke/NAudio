@@ -32,11 +32,30 @@ public static class NAudio
     const float MIN_DISTANCE = 1;
     const float SPREAD = 150;
 
+    public static Transform root;
+
 #if POOLING
     static AudioSource GetNextSource()
     {
         AudioSource source = sourcePool.Dequeue();
         sourcePool.Enqueue(source);
+
+        int search = 0;
+
+        while (source.isPlaying)
+        {
+            source = sourcePool.Dequeue();
+            sourcePool.Enqueue(source);
+
+            if (search >= POOL_SIZE)
+            {
+                Debug.LogError("All sounds are playing, increase the pool size");
+                break;
+            }
+
+            search++;
+        }
+
         return source;
     }
 
@@ -44,11 +63,12 @@ public static class NAudio
     {
         sourcePool = new Queue<AudioSource>(size);
 
-        GameObject poolRoot = new GameObject("NAudio_Pool");
+        GameObject rootGO = new GameObject("NAudio_Pool");
+        root = rootGO.transform;
 
         for (int i = 0; i < size; i++)
         {
-            sourcePool.Enqueue(CreateSource(poolRoot.transform));
+            sourcePool.Enqueue(CreateSource(root));
         }
     }
 #endif
@@ -79,6 +99,9 @@ public static class NAudio
             InitializePool();
 
         source = GetNextSource();
+
+        if (!source) return null;
+
         go = source.gameObject;
 #else
         go = new GameObject("AudioTemp");
@@ -188,5 +211,13 @@ public static class NAudio
 #endif
 
         return source;
+    }
+
+    public static void PlayRandomTime(this AudioSource source)
+    {
+        if (source.clip == null) return;
+
+        source.time = Random.Range(0, source.clip.length);
+        source.Play();
     }
 }
