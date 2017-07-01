@@ -29,8 +29,8 @@ public static class NAudio
     const int POOL_SIZE = 300;
 #endif
 
-    const float MIN_DISTANCE = 1;
-    const float SPREAD = 150;
+    const float DEFAULT_MIN_DISTANCE = 1;
+    const float DEFAULT_SPREAD = 150;
 
     public static Transform root;
 
@@ -87,8 +87,8 @@ public static class NAudio
     public static AudioSource Play(
         this AudioClip clip, Vector3 position,
         float volume = 1, float pitch = 1,
-        float spread = SPREAD,
-        float minDistance = MIN_DISTANCE,
+        float spread = DEFAULT_SPREAD,
+        float minDistance = DEFAULT_MIN_DISTANCE,
         AudioMixerGroup mixerGroup = null)
     {
         GameObject go;
@@ -153,8 +153,8 @@ public static class NAudio
     public static AudioSource Play(
         this AudioClip[] clips, Vector3 position,
         float volume = 1, float pitch = 1,
-        float spread = SPREAD,
-        float minDistance = MIN_DISTANCE,
+        float spread = DEFAULT_SPREAD,
+        float minDistance = DEFAULT_MIN_DISTANCE,
         AudioMixerGroup mixerGroup = null)
     {
         Debug.Assert(clips != null, "NAudio: Clips array is null");
@@ -197,8 +197,8 @@ public static class NAudio
     public static AudioSource Play2D(
         this AudioClip[] clips,
         float volume = 1, float pitch = 1,
-        float spread = SPREAD,
-        float minDistance = MIN_DISTANCE,
+        float spread = DEFAULT_SPREAD,
+        float minDistance = DEFAULT_MIN_DISTANCE,
         AudioMixerGroup mixerGroup = null)
     {
         return Play(clips[Random.Range(0, clips.Length)], Vector3.zero, volume, pitch, spread, minDistance, mixerGroup);
@@ -226,8 +226,8 @@ public static class NAudio
         Transform at = null, AudioClip clip = null,
         float volume = 1, float pitch = 1,
         bool loop = true, bool playAtStart = false,
-        float minDistance = MIN_DISTANCE,
-        float spread = MIN_DISTANCE,
+        float minDistance = DEFAULT_MIN_DISTANCE,
+        float spread = DEFAULT_SPREAD,
         float spatialBlend = 1,
         AudioMixerGroup mixerGroup = null)
     {
