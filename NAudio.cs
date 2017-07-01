@@ -26,7 +26,7 @@ public static class NAudio
 {
 #if POOLING
     public static Queue<AudioSource> sourcePool;
-    const int POOL_SIZE = 20;
+    const int POOL_SIZE = 300;
 #endif
 
     const float MIN_DISTANCE = 1;
@@ -157,8 +157,8 @@ public static class NAudio
         float minDistance = MIN_DISTANCE,
         AudioMixerGroup mixerGroup = null)
     {
-        if (clips == null) { Debug.Log("Clips array is null"); return null; }
-        if (clips.Length == 0) { Debug.Log("No clips in array"); return null; }
+        Debug.Assert(clips != null, "NAudio: Clips array is null");
+        Debug.Assert(clips.Length != 0, "NAudio: No clips in array");
 
         return Play(clips[Random.Range(0, clips.Length)], position, volume, pitch, spread, minDistance, mixerGroup);
     }
