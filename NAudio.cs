@@ -18,6 +18,8 @@
 /// If using Oculus audio - ONSP, uncomment following line. It will add the ONSPAudioSource script to sources
 //#define USE_OCULUS_AUDIO
 
+//#define SEEK_NOT_PLAYING_SOURCES
+
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Audio;
@@ -40,6 +42,7 @@ public static class NAudio
         AudioSource source = sourcePool.Dequeue();
         sourcePool.Enqueue(source);
 
+#if SEEK_NOT_PLAYING_SOURCES
         int search = 0;
 
         while (source.isPlaying)
@@ -47,6 +50,7 @@ public static class NAudio
             source = sourcePool.Dequeue();
             sourcePool.Enqueue(source);
 
+            
             if (search >= POOL_SIZE)
             {
                 Debug.LogError("All sounds are playing, increase the pool size");
@@ -55,6 +59,7 @@ public static class NAudio
 
             search++;
         }
+#endif
 
         return source;
     }
@@ -137,6 +142,57 @@ public static class NAudio
 #endif
 
         return source;
+    }
+
+    public static AudioSource PlayOneTime(
+        this AudioClip clip, Vector3 position,
+        float volume = 1, float pitch = 1,
+        float spread = DEFAULT_SPREAD,
+        float minDistance = DEFAULT_MIN_DISTANCE,
+        AudioMixerGroup mixerGroup = null)
+    {
+        if (sourcePool == null)
+            InitializePool();
+
+        var _source = GetNextSource();
+
+        _source.transform.position = position;
+
+        _source.pitch = pitch;
+        _source.spread = spread;
+        _source.minDistance = minDistance;
+        _source.outputAudioMixerGroup = mixerGroup;
+
+        _source.PlayOneShot(clip, volume);
+
+        return _source;
+    }
+
+    public static AudioSource PlayOneTime(
+        this AudioClip[] clips, Vector3 position,
+        float volume = 1, float pitch = 1,
+        float spread = DEFAULT_SPREAD,
+        float minDistance = DEFAULT_MIN_DISTANCE,
+        AudioMixerGroup mixerGroup = null)
+    {
+        if (sourcePool == null)
+            InitializePool();
+
+        var _source = GetNextSource();
+
+        _source.transform.position = position;
+
+        _source.pitch = pitch;
+        _source.spread = spread;
+        _source.minDistance = minDistance;
+        _source.outputAudioMixerGroup = mixerGroup;
+
+        _source.PlayOneShot(clips[Random.Range(0, clips.Length)], volume);
+
+        //_source.clip = clips[Random.Range(0, clips.Length)];
+        //_source.Play();
+
+        return _source;
     }
 
     /// <summary>
