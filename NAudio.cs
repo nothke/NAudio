@@ -1,4 +1,4 @@
-﻿///
+///
 /// NAudio by Nothke
 /// Simple clip playing and audio source creation in a single line
 ///
@@ -28,11 +28,14 @@ public static class NAudio
 {
 #if POOLING
     public static Queue<AudioSource> sourcePool;
-    const int POOL_SIZE = 300;
+    const int POOL_SIZE = 50;
+#else
+    // Just to make sure destroy won't cut the sound short in case of an increased latency
+    const float DESTROY_AFTER_MARGIN_SECONDS = 0.2f;
 #endif
 
     const float DEFAULT_MIN_DISTANCE = 1;
-    const float DEFAULT_SPREAD = 150;
+    const float DEFAULT_SPREAD = 0;
 
     public static Transform root;
 
@@ -64,8 +67,27 @@ public static class NAudio
         return source;
     }
 
-    public static void InitializePool(int size = POOL_SIZE)
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    public static void InitializePool()
     {
+        InitializePool(POOL_SIZE);
+    }
+
+    public static void InitializePool(int size)
+    {
+        if (sourcePool != null && sourcePool.Count > 0)
+        {
+            //Debug.LogWarning("Pool already exists");
+
+            foreach (var source in sourcePool)
+            {
+                if (source)
+                {
+                    Object.Destroy(source);
+                }
+            }
+        }
+
         sourcePool = new Queue<AudioSource>(size);
 
         GameObject rootGO = new GameObject("NAudio_Pool");
@@ -85,37 +107,41 @@ public static class NAudio
     /// <param name="position">Position at which it will be played</param>
     /// <param name="volume"></param>
     /// <param name="pitch"></param>
-    /// <param name="spread">How 'wide' the panning will be in 3d</param>
-    /// <param name="minDistance"></param>
-    /// <param name="mixerGroup"></param>
+    /// <param name="spread">How 'wide' the panning will be in 3d. 0 means it will be heard from only one direction, 180 is all around, 360 is opposite direction.</param>
+    /// <param name="minDistance">The distance at which source volume will be 1 and falloff. Technically this is the sound intensity.</param>
+    /// <param name="mixerGroup">Add source to mixer group</param>
+    /// <param name="parent">A transform to attach source to. Position is still world position before parenting.</param>
     /// <returns></returns>
     public static AudioSource Play(
-        this AudioClip clip, Vector3 position,
-        float volume = 1, float pitch = 1,
+        this AudioClip clip,
+        Vector3 position,
+        float volume = 1,
+        float pitch = 1,
         float spread = DEFAULT_SPREAD,
         float minDistance = DEFAULT_MIN_DISTANCE,
-        AudioMixerGroup mixerGroup = null)
+        AudioMixerGroup mixerGroup = null,
+        Transform parent = null)
     {
-        GameObject go;
-        AudioSource source;
+        if (volume == 0) return null;
+        if (pitch == 0) return null;
+        Debug.Assert(clip != null, "No AudioClip was passed");
+
 
 #if POOLING
         if (sourcePool == null)
             InitializePool();
 
-        source = GetNextSource();
-
+        AudioSource source = GetNextSource();
         if (!source) return null;
 
-        go = source.gameObject;
+        GameObject go = source.gameObject;
 #else
-        go = new GameObject("AudioTemp");
-        source = go.AddComponent<AudioSource>();
+        GameObject go = new GameObject("AudioTemp");
+        AudioSource source = go.AddComponent<AudioSource>();
 #endif
-
         go.transform.position = position;
 
-        source.spatialBlend = 1; // makes the source 3d
+        source.spatialBlend = 1; // Makes the source 3D
         source.minDistance = minDistance;
 
         source.loop = false;
@@ -129,16 +155,22 @@ public static class NAudio
 
         source.outputAudioMixerGroup = mixerGroup;
 
+        if (parent)
+            source.transform.parent = parent;
+
 #if ENABLE_SPATIALIZER_API
         source.spatialize = true;
 #endif
 
+#if USE_OCULUS_AUDIO && !POOLING
+        source.gameObject.AddComponent<ONSPAudioSource>().SetParameters(ref source);
+#endif
+
         source.Play();
 
-        if (pitch == 0) pitch = 100;
-
 #if !POOLING
-        GameObject.Destroy(source.gameObject, clip.length * (1 / pitch));
+        // Division by zero prevented at the top of the function
+        GameObject.Destroy(source.gameObject, clip.length * (1 / pitch) + DESTROY_AFTER_MARGIN_SECONDS);
 #endif
 
         return source;
@@ -151,21 +183,43 @@ public static class NAudio
     /// <param name="position">Position at which it will be played</param>
     /// <param name="volume"></param>
     /// <param name="pitch"></param>
-    /// <param name="spread"></param>
-    /// <param name="minDistance">How 'wide' the panning will be in 3d</param>
-    /// <param name="mixerGroup"></param>
+    /// <param name="spread">How 'wide' the panning will be in 3d. 0 means it will be heard from only one direction, 180 is all around, 360 is opposite direction.</param>
+    /// <param name="minDistance">The distance at which source volume will be 1 and falloff. Technically this is the sound intensity.</param>
+    /// <param name="mixerGroup">Add source to mixer group</param>
+    /// <param name="parent">A transform to attach source to. Position is still world position before parenting.</param>
+    /// <param name="noRepeatSwap">Swaps the order of array so that the same clip never plays twice in succession. Changes the order of clips in the input array.</param>
     /// <returns></returns>
     public static AudioSource Play(
         this AudioClip[] clips, Vector3 position,
         float volume = 1, float pitch = 1,
         float spread = DEFAULT_SPREAD,
         float minDistance = DEFAULT_MIN_DISTANCE,
-        AudioMixerGroup mixerGroup = null)
+        AudioMixerGroup mixerGroup = null,
+        Transform parent = null,
+        bool noRepeatSwap = false)
     {
         Debug.Assert(clips != null, "NAudio: Clips array is null");
         Debug.Assert(clips.Length != 0, "NAudio: No clips in array");
 
-        return Play(clips[Random.Range(0, clips.Length)], position, volume, pitch, spread, minDistance, mixerGroup);
+        int i;
+        if (clips.Length == 0)
+        {
+            i = 0;
+        }
+        else if (noRepeatSwap)
+        {
+            i = Random.Range(1, clips.Length);
+            var tmp = clips[0];
+            clips[0] = clips[i];
+            clips[i] = tmp;
+            i = 0;
+        }
+        else
+        {
+            i = Random.Range(0, clips.Length);
+        }
+
+        return Play(clips[i], position, volume, pitch, spread, minDistance, mixerGroup, parent);
     }
 
     #region 2D
@@ -255,7 +309,7 @@ public static class NAudio
         source.outputAudioMixerGroup = mixerGroup;
 
 #if USE_OCULUS_AUDIO
-        source.gameObject.AddComponent<ONSPAudioSource>();
+        source.gameObject.AddComponent<ONSPAudioSource>().SetParameters(ref source);
 #endif
 
         return source;
